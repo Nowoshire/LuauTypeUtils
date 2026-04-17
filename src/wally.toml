@@ -2,14 +2,13 @@
 name = "nowoshire/luautypeutils"
 description = "A collection of various type utilities for the New Luau Type Solver."
 
-version = "0.1.4"
+version = "0.1.5"
 license = "MIT"
 
 registry = "https://github.com/UpliftGames/wally-index"
 repository = "https://github.com/Nowoshire/LuauTypeUtils"
 realm = "shared"
 
-exclude = ["*"]
-include = ["src", "src/*", "README.md", "wally.toml"]
+include = ["*"]
 
 [dependencies]
