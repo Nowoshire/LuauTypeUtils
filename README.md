@@ -11,7 +11,7 @@ Download the `.rbxm` file from the [Latest Release](https://github.com/Nowoshire
 ### Wally
 
 ```toml
-TypeUtils = "nowoshire/luautypeutils@^0.0.0"
+TypeUtils = "nowoshire/luautypeutils@^0"
 ```
 
 ### Rojo (Build from Source)
