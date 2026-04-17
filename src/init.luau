@@ -1,7 +1,7 @@
 --[[
 	-- LuauTypeUtils --
 
-	v0.1.4
+	v0.1.5
 
 	A collection of various type utilities for the New Luau Type Solver.
 
