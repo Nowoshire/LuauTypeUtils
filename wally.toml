@@ -2,7 +2,7 @@
 name = "nowoshire/luautypeutils"
 description = "A collection of various type utilities for the New Luau Type Solver."
 
-version = "0.1.1"
+version = "0.1.2"
 license = "MIT"
 
 registry = "https://github.com/UpliftGames/wally-index"
