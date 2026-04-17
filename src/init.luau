@@ -4,48 +4,36 @@
 	Makes all read-only or write-only properties to be both writable and readable.
 ]]
 export type function internal(ty: type)
-	local opCount = 0
-	const function incOpCount()
-		assert(opCount <= 10000, "Type too complex: operation limit exceeded")
-		opCount += 1
-	end
-
-	const function processType(t: type, depth: number)
-		assert(depth <= 20, "Type too complex: recursion depth limit exceeded")
-
+	const function processType(t: type)
 		const tTag = t.tag
 		if tTag == "table" then
 			-- props
 			for keyType, rwType in t:properties() do
-				incOpCount()
 				t:setproperty(
 					keyType,
-					processType(rwType.read or rwType.write :: type, depth + 1)
+					processType(rwType.read or rwType.write :: type)
 				)
 			end
 			
 			-- indexer
 			const indexer = t:indexer()
 			if indexer then
-				incOpCount()
 				t:setindexer(
 					indexer.index,
-					processType(indexer.readresult, depth + 1)
+					processType(indexer.readresult)
 				)
 			end
 		elseif tTag == "union" then
 			const components = t:components()
 			for i, component in components do
-				incOpCount()
-				components[i] = processType(component, depth + 1)
+				components[i] = processType(component)
 			end
 
 			return types.unionof(table.unpack(components))
 		elseif tTag == "intersection" then
 			const components = t:components()
 			for i, component in components do
-				incOpCount()
-				components[i] = processType(component, depth + 1)
+				components[i] = processType(component)
 			end
 
 			return types.intersectionof(table.unpack(components))
@@ -54,7 +42,7 @@ export type function internal(ty: type)
 		return t
 	end
 
-	return processType(ty, 0)
+	return processType(ty)
 end
 
 --[=[
@@ -141,17 +129,13 @@ export type function requireddeep(ty: type)
 		opCount += 1
 	end
 
-	const function processType(t: type, depth: number)
-		if depth > 20 then
-			error("Type too complex: recursion depth limit exceeded")
-		end
-
+	const function processType(t: type)
 		local tTag = t.tag
 		if tTag == "table" then
 			for keyType, rwType in t:properties() do
 				incOpCount()
 				
-				t:setproperty(keyType, processType(rwType.read or rwType.write :: type, depth + 1))
+				t:setproperty(keyType, processType(rwType.read or rwType.write :: type))
 			end
 		elseif tTag == "union" then
 			local components = t:components()
@@ -170,9 +154,12 @@ export type function requireddeep(ty: type)
 		return t
 	end
 
-	return processType(ty, 0) or types.singleton(nil)
+	return processType(ty) or types.singleton(nil)
 end
 
+--[[
+	Returns a tabletype containing the Instance's child Instances.
+]]
 export type function childof(instance: type)
 	local instanceTag = instance.tag
 	if instanceTag ~= "extern" then
