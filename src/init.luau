@@ -1,7 +1,7 @@
 --[[
 	-- LuauTypeUtils --
 
-	v0.1.5
+	v0.2.0
 
 	A collection of various type utilities for the New Luau Type Solver.
 
@@ -84,29 +84,16 @@ export type internal<ty> = fn_internal<ty>
 	Removes all nils from the given union type recursively (unions nested in tables).
 ]]
 type function fn_requireddeep(ty: type)
-	local opCount = 0
-	const function incOpCount()
-		if opCount > 10000 then
-			error("Type too complex: operation limit exceeded")
-		end		
-
-		opCount += 1
-	end
-
 	const function processType(t: type)
-		local tTag = t.tag
+		const tTag = t.tag
 		if tTag == "table" then
 			for keyType, rwType in t:properties() do
-				incOpCount()
-				
 				t:setproperty(keyType, processType(rwType.read or rwType.write :: type))
 			end
 		elseif tTag == "union" then
-			local components = t:components()
+			const components = t:components()
 			for i = #components, 1, -1 do
-				incOpCount()
-				
-				local component = components[i]
+				const component = components[i]
 				if component:is("singleton") and component:value() == nil then
 					table.remove(components, i)
 				end
@@ -127,27 +114,57 @@ export type requireddeep<ty> = fn_requireddeep<ty>
 	Returns a tabletype containing the Instance's child Instances.
 ]]
 type function fn_childof(instance: type)
-	local instanceTag = instance.tag
+	const instanceTag = instance.tag
 	if instanceTag ~= "extern" then
 		error(`childof<type> expects an externtype, got {instanceTag} instead.`)
 	end
 	
-	local properties = instance:properties()
-	local children: {[type]: type} = {}
+	const children: {[type]: type} = {}
 	
-	for keyType, rwType in properties do
-		-- The only property that is included in the dict is "Parent".
+	for keyType, rwType in instance:properties() do
 		-- Depending on your use case it might also be useful to include this.
-		if keyType:value() == "Parent" then
-			continue
+		if keyType:value() == "Parent" then continue end
+
+		const readType = rwType.read
+		if not readType or not readType:is("extern") then continue end
+
+		-- Check for Parent to differentiate from other externtypes
+		for propKeyType, propRWType in readType:properties() do
+			if propKeyType:value() ~= "Parent" then continue end
+
+			children[keyType] = readType
+			break
 		end
-		
-		children[keyType] = rwType.read
 	end
 	
 	return types.newtable(children)
 end
 
 export type childof<instance> = fn_childof<instance>
+
+--[[
+	Returns a tabletype containing the Instance's properties, including from superclasses.
+]]
+type function fn_propsof(instance: type)
+	const instanceTag = instance.tag
+	if instanceTag ~= "extern" then
+		error(`propsof<type> expects an externtype, got {instanceTag} instead.`)
+	end
+
+	const properties = {} :: {[type]: {read: type?, write: type?}}
+
+	local parent = instance
+	while parent do
+		for keyType, rwType in parent:properties() do
+			properties[keyType] = rwType
+		end
+
+		parent = parent:readparent()
+	end
+
+	return types.newtable(properties)
+end
+
+export type propsof<instance> = fn_propsof<instance>
 
 return nil
