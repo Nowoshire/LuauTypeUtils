@@ -1,0 +1,20 @@
+[package]
+name = "nowoshire/luautypeutils"
+description = "A collection of various type utilities for the New Luau Type Solver."
+
+version = "0.3.0"
+license = "MIT"
+
+registry = "https://github.com/UpliftGames/wally-index"
+repository = "https://github.com/Nowoshire/LuauTypeUtils"
+realm = "shared"
+
+# Include acts like an exclusion-exception list, it doesn't automatically exclude non-included files
+# Use * to exclude everything, so include has the intuitive allowlist behavior.
+exclude = ["*"]
+
+# wally seems to also recurse with src/* (?)
+# but I'm using src/** for clarity as it also seemingly works.
+include = ["src", "src/**", "LICENSE", "README.md", "wally.toml"]
+
+[dependencies]
