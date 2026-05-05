@@ -1,7 +1,7 @@
 --[[
 	-- LuauTypeUtils --
 
-	v0.2.0
+	v0.3.0
 
 	A collection of various type utilities for the New Luau Type Solver.
 
@@ -145,18 +145,74 @@ export type childof<instance> = fn_childof<instance>
 --[[
 	Returns a tabletype containing the Instance's properties, including from superclasses.
 ]]
-type function fn_propsof(instance: type)
+type function fn_propsof(instance: type, excludeMethodsLiteral: type, excludeEventsLiteral: type, rbxScriptSignalType: type)
 	const instanceTag = instance.tag
 	if instanceTag ~= "extern" then
 		error(`propsof<type> expects an externtype, got {instanceTag} instead.`)
 	end
 
+	const excludeMethods = excludeMethodsLiteral.tag == "singleton" and excludeMethodsLiteral:value()
+	const excludeEvents = excludeEventsLiteral.tag == "singleton" and excludeEventsLiteral:value()
+
 	const properties = {} :: {[type]: {read: type?, write: type?}}
+	const function registerProperty(parent: type, keyType: type, rwType: {read: type?, write: type?})
+		const valueType = rwType.read or rwType.write :: type
+		const valueTag = valueType.tag
+
+		-- Handle overloaded functions
+		if excludeMethods then
+			local func = if valueTag == "function"
+				then valueType
+				elseif valueTag == "intersection" then valueType:components()[1]
+				else nil
+
+			if func and func.tag == "function" then
+				-- Allow callback properties
+				const testType = types.copy(func)
+				testType:setparameters({parent})
+
+				if testType == func then return end
+			end
+		end
+
+		if excludeEvents and valueTag == "table" then
+			local match = true
+
+			const valueProps = valueType:properties() 
+			for propKeyType, propRwType in valueProps do
+				valueProps[propKeyType] = nil
+
+				const propType = propRwType.read or propRwType.write :: type
+				const signalProp = rbxScriptSignalType:readproperty(propKeyType)
+				if not signalProp then
+					match = false
+					break
+				end
+
+				const propTag = propType.tag
+				if propTag ~= signalProp.tag then
+					match = false
+					break
+				end
+
+				const params = propType:parameters()
+				const head = params.head
+				if head and head[1] == valueType then continue end
+
+				match = false
+				break
+			end
+
+			if match then return end
+		end
+
+		properties[keyType] = rwType
+	end
 
 	local parent = instance
 	while parent do
 		for keyType, rwType in parent:properties() do
-			properties[keyType] = rwType
+			registerProperty(parent, keyType, rwType)
 		end
 
 		parent = parent:readparent()
@@ -165,6 +221,6 @@ type function fn_propsof(instance: type)
 	return types.newtable(properties)
 end
 
-export type propsof<instance> = fn_propsof<instance>
+export type propsof<instance, excludeMethods = false, excludeEvents = false> = fn_propsof<instance, excludeMethods, excludeEvents, RBXScriptSignal>
 
 return nil
